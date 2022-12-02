@@ -112,9 +112,9 @@
                 <div class="d-flex" id="menubar">
                     <!-- LOGO -->
                     <a href="employeeDashboard.html"><button class="menubar">Dashboard</button></a>
-                    <a href=""><button class="menubar">RFQs/Offers</button></a>
+                    <a href="RFQs.html"><button class="menubar">RFQs/Offers</button></a>
                     <a href="pos.html"><button class="menubar">POs/Order Confirmations</button></a>
-                    <button class="menubar active">Shipment/Payments</button>
+                    <a href=""><button class="menubar active">Shipment/Payments</button></a>
                     <button class="menubar">AJCL Invoices</button>
                     <button class="menubar">Task Tracking</button>
                     <button class="menubar">Reports</button>
@@ -163,19 +163,29 @@
     <!-- Search Bar -->
         <input oninput="" id="search" class="search" type="text" placeholder="Search">
         <div>
-            <a href=""><button class="add" id="create" onchange="addShipment()"><img src="images/ship-solid.svg" height="18px">&nbsp;&nbsp;&nbsp;Place/Add Shipment</button></a>
+            <a href="addPLForm.html"><button class="add" id="create"><img src="images/ship-solid.svg" height="18px">&nbsp;&nbsp;&nbsp;Create PKL</button></a>
         </div>
+        <div>
+            <a href="addInvoiceForm.html"><button class="add" id="create">Add Invoice</button></a>
+        </div>
+        <div>
+            <a href="addPLForm.html"><button class="add" id="create">Add AWB</button></a>
+        </div>
+        <div>
+            <a href="addPLForm.html"><button class="add" id="create">Add CRV</button></a>
+        </div>
+
     <!-- Shipment -->
     <br><br><br>
-    <div class="rfqs" id="rfqs">
-        <div class="shipment">
+    <div class="rfqs" id="pkls">
+        <!-- <div class="shipment">
             <div class="shipmentCardDiv">
-                    <div>Shipment No: ####</div>
                     <div>PKL No: ####</div>
-                    <div>Date: ####</div>
-                    <div>No of Items: ####</div>
-                    <div>PO Number: ####</div>
-                    <div>OC Number: ####</div>
+                    <div>PKL Date: ####</div>
+                    <div>Shipment Date: ####</div>
+                    <div>Invoice Number: ####</div>
+                    <div>AWB Number: ####</div>
+                    <div>CRV Number: ####</div>
             </div>
             
             <div class="offersTableSection">
@@ -184,6 +194,7 @@
                         <th>Part No</th>
                         <th>Nomenclature</th>
                         <th>Serial No</th>
+                        <th>PO Number</th>
                         <th>Qty Ship.</th>
                         <th>Qty Del.</th>
                         <th>Qty Rem.</th>
@@ -200,31 +211,6 @@
                         <td>#####</td>
                         <td>#####</td>
                         <td>#####</td>
-                        <td><button class="shipmentTableButton" onclick="enableItemDamageDetailModel()">Damage</button></td>
-                        <td>#####</td>
-                        <td><button class="shipmentTableButton" onclick="enableItemCommentDetailModel()">Add/View</button></td>
-                        <td>#####</td>
-                        <td><button class="shipmentTableButton" onclick="enableItemShipmentDetailModel()">Shipments</button></td>
-                    </tr>
-                    <tr>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                    </tr>
-                    <tr>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
-                        <td>#####</td>
                         <td>#####</td>
                         <td>#####</td>
                         <td>#####</td>
@@ -235,10 +221,9 @@
                 </table>
             </div>
             <div class="remarkSection">
-                <button class="remarks">Upload Invoice</button>
                 <button class="requestStatus">Status</button>
             </div>
-        </div>
+        </div> -->
     </div>
     </div>
     <!-- Shipment Modal -->

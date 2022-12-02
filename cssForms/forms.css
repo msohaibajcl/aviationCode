@@ -417,3 +417,65 @@ body{
   border-color: #36653f;
   text-align: center;
 }
+.plItems{
+  background-color: rgb(220 220 220 / 41%);;
+  text-align: center;
+  color:black;
+}
+.plItems th{
+    border: 2px solid;
+    padding: 0px 0px;
+    min-width: 75px;
+    background-color: #a9c23a;
+    color: rgb(0, 0, 0);
+    border-color: #a9c23a;
+    text-align: center;
+}
+.plItems td{
+  border:2px solid;
+  padding: 0px 10px;
+  min-width: 75px;
+  border-color: #a9c23a;
+}
+.plItems input{
+  width: 100%;
+}
+.plItems button{
+  width: 80px;
+  background: #a9c23a;
+  color: rgb(0, 0, 0);
+  padding: 0px;
+  border: none;
+  height: 27px;
+  margin: 0px;
+  margin-top: 1px;
+}
+.plItems button:hover{
+  background: #000;
+}
+.searchPKL{
+  display: grid;
+  grid-template-columns: 30% 10% 56%;
+  column-gap: 2%;
+}
+.searchPKL div{
+  width: 100%;
+}
+.searchPKL button{
+  width: 100%;
+  border: none;
+  border-radius: 5px;
+  background-color: #a9c23a;
+  height: 50%;
+  font-weight: 600;
+  bottom: 1px;
+  margin: 0;
+  top: 50%;
+  transform: translateY(96%);
+}
+.searchPKL button:hover{
+  background: black;
+  color:white;
+}
+
+

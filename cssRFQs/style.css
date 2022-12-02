@@ -265,3 +265,12 @@ table{
     color: white;
     font-weight: 700;
 }
+.plheadTable th{
+    border: 2px solid;
+    padding: 0px 0px;
+    min-width: 75px;
+    background-color: #a9c23f;
+    color: black;
+    border-color: #a9c23f;
+    text-align: center;
+}

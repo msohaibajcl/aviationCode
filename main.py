@@ -647,7 +647,7 @@ def addPO():
                 frieght=(float(data["prices"][count])-discount)*(float(data['frieght'][count])/100)
                 frieght=round(frieght, 2)
                 query="insert into poItems(poNumber, partNo, nomenclature, quantity, reference, price, status, discountAmount,discountPercent,frieghtCharges,frieghtPercent) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-                values=(data["no"],partNo,result2[1],data['quantity'][count],result[1],round(float(data['prices'][count])-discount,2),'Not Recieved',discount,round(float(data['discounts'][count]),2),frieght,data['frieght'][count])
+                values=(data["no"],partNo,result2[1],data['quantity'][count],result[1],round(float(data['prices'][count]),2),'Not Recieved',discount,round(float(data['discounts'][count]),2),frieght,data['frieght'][count])
                 cursor.execute(query,values)
                 db.commit()
                 query="update itemStatus set status=%s,poId=%s where id=%s"
@@ -750,12 +750,12 @@ def getPODetails(id):
             fileLoc="D:/docsTemp/"+row[10]
             temp3={"id":row[0], "partNo":row[1], "nomenclature":row[2], "alternate":row[3], "quantity":row[4], "price":row[5], "discountPercent":row[6], "frieghtPercent":row[8],"status":row[9],"fileloc":fileLoc}
             ocItems.append(temp3)
-    query4="select totalAmount,fileLoc from oc where poNumber=%s"
+    query4="select totalAmount,fileLoc,number from oc where poNumber=%s"
     cursor.execute(query4,(result[1],))
     result4=cursor.fetchone()
     if result4:
         fileLoc="D:/docsTemp/"+str(result4[1])
-        oc={"totalAmount":result4[0],"fileLoc":fileLoc}
+        oc={"totalAmount":result4[0],"fileLoc":fileLoc,"ocNumber":result4[2]}
     else:
         oc={"totalAmount":"-","fileLoc":"-"}
     return jsonify({"po":po,"items":items,"ocItems":ocItems,"oc":oc})
@@ -910,7 +910,7 @@ def amendPO():
             frieght=(float(data["prices"][count])-discount)*(float(data['frieght'][count])/100)
             frieght=round(frieght, 2)
             query="insert into poItems(poNumber, partNo, nomenclature, quantity, reference, price, status, discountAmount,discountPercent,frieghtCharges,frieghtPercent) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            values=(data["no"],i,resultTemp[0],data['quantity'][count],"",round(float(data['prices'][count])-discount,2),'Not Recieved',discount,round(float(data['discounts'][count]),2),frieght,data['frieght'][count])
+            values=(data["no"],i,resultTemp[0],data['quantity'][count],"",round(float(data['prices'][count]),2),'Not Recieved',discount,round(float(data['discounts'][count]),2),frieght,data['frieght'][count])
             cursor.execute(query,values)
             db.commit()
         else:
@@ -985,13 +985,16 @@ def getPOItems(id):
         cursor.execute(query2,(result[0],))
         result2=cursor.fetchall()
         items=[]
-        count=0
+        recieved=0
+        notRecieved=0
         if result2:
             for row in result2:
-                temp={"id":row[0], "poNumber":row[1], "partNo":row[2], "nomenclature":row[3], "quantity":row[4], "reference":row[5], "price":row[6], "status":row[7], "discountPercent":row[8], "discountAmount":row[9], "frieghtCharges":row[10], "frieghtPercent":row[11],"deliveryPeriod":str(result[4])}
-                items.append(temp)
-                count+=1
-        poDetails["noItems"]=count
+                if row[7]=="OC Recieved":recieved+=1
+                else:
+                    temp={"id":row[0], "poNumber":row[1], "partNo":row[2], "nomenclature":row[3], "quantity":row[4], "reference":row[5], "price":row[6], "status":row[7], "discountPercent":row[8], "discountAmount":row[9], "frieghtCharges":row[10], "frieghtPercent":row[11],"deliveryPeriod":str(result[4])}
+                    items.append(temp)
+                    notRecieved+=1
+        poDetails["noItems"]=str(recieved)+" Recieved"+" | "+str(notRecieved)+" Not Recieved"
         return jsonify({"items":items,"poDetails":poDetails})
     else:jsonify({"response":[]})
 
@@ -1024,8 +1027,8 @@ def addoc():
             price=round(float(items["price"][count])*float(items["qty"][count]),2)
             discountAmount=round(price*(float(items["discount"][count])/100),2)
             frieghtCharges=round((price-discountAmount)*float(items["frieght"][count]),2)
-            query="insert into ocitems(ocNumber, partNo, alternate, qunatity, price, discountPercent, discountAmount, frieghtPercent, frieghtCharges, status, nomenclature,date,validity) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            cursor.execute(query,(data["ocNumber"],result0[0],"-",items["qty"][count],price,items["discount"][count],discountAmount,items["frieght"][count],frieghtCharges,"Not Delivered",result0[1],items["date"][count],items["delivery"][count]))
+            query="insert into ocitems(ocNumber, partNo, alternate, qunatity, price, discountPercent, discountAmount, frieghtPercent, frieghtCharges, status, nomenclature,date,validity,remQty) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            cursor.execute(query,(data["ocNumber"],result0[0],"-",items["qty"][count],round(float(items["price"][count]),2),items["discount"][count],discountAmount,items["frieght"][count],frieghtCharges,"Not Delivered",result0[1],items["date"][count],items["delivery"][count],items["qty"][count]))
             db.commit()
             query2="update poitems set status='OC Recieved' where id=%s"
             cursor.execute(query2,(i,))
@@ -1094,7 +1097,7 @@ def editOrderConfirmation():
     frieghtCharges=round(float(price-discountAmount)*(float(data["ocFrieghtCharges"])/100),2)
     code=str(data["id"])+str(random.randint(100000000, 999999999))+str(currentMonth)+str(currentYear)
     query="update ocitems set alternate=%s, qunatity=%s, price=%s, discountPercent=%s, discountAmount=%s, frieghtPercent=%s, frieghtCharges=%s, status=%s, fileLoc=%s where id=%s"
-    cursor.execute(query,(data["alternate"],price,data["unitPrice"],data["ocDiscount"],discountAmount,data["ocFrieghtCharges"],frieghtCharges,"Not Delivered", code, data["id"]))
+    cursor.execute(query,(data["alternate"],data["qty"],round(float(data["unitPrice"]),2),data["ocDiscount"],discountAmount,data["ocFrieghtCharges"],frieghtCharges,"Not Delivered", code, data["id"]))
     db.commit()
     query2="select qunatity, price, discountPercent, discountAmount, frieghtPercent, frieghtCharges from ocitems where ocNumber in (select ocNumber from ocitems where id=%s)"
     cursor.execute(query2,(data["id"],))
@@ -1125,6 +1128,137 @@ def uploadOCEditDocument(code):
     cursor.execute(query,(str(code)+"."+format,str(code)))
     db.commit()
     return redirect("https://google.com")
+
+@app.route("/api/aviation/getPOAllOCItems/<search>",methods=["GET","POST"])
+def getPOAllOCItems(search):
+    db,cursor = database()
+    query="select id, ocNumber, partNo, alternate, remQty, price, discountPercent, frieghtPercent, status, nomenclature, date, validity from ocitems where remQty!=0 and ocNumber in (select number from oc where poNumber=%s)"
+    cursor.execute(query,(search,))
+    result=cursor.fetchall()
+    response=[]
+    if result:
+        for row in result:
+            temp={"id":row[0], "ocNumber":row[1], "partNo":row[2], "alternate":row[3], "qunatity":row[4], "price":row[5], "discountPercent":row[6], "frieghtPercent":row[7], "status":row[8], "nomenclature":row[9], "date":str(row[10]), "validity":str(row[11])}
+            query2="select poNumber from oc where number=%s"
+            cursor.execute(query2,(row[1],))
+            result2=cursor.fetchone()
+            temp["poNumber"]=result2[0]
+            response.append(temp)
+        return jsonify({"response":response})
+    else:
+        return jsonify({"response":"not found"})
+
+@app.route("/api/aviation/addPKL/",methods=["GET","POST"])
+def addPKL():
+    db,cursor = database()
+    data=request.get_data().decode()
+    data = json.loads(data)
+    query="select id from pl where number=%s"
+    cursor.execute(query,(data["pklNumber"],))
+    result=cursor.fetchone()
+    if result:
+        return jsonify({"response":"exist"})
+    else:
+        currentMonth = datetime.now().month
+        currentYear = datetime.now().year
+        code=str(data["pklNumber"])+"PKL"+str(random.randint(1000, 9999))+str(currentMonth)+str(currentYear)
+        query="insert into pl(number, date, shipmentDate, AWB, fileLoc) values(%s,%s,%s,%s,%s)"
+        cursor.execute(query,(data["pklNumber"],data["date"],data["shipmentDate"],"",code))
+        db.commit()
+        poNumber=[]
+        sn=data["sn"]
+        qty=data["qty"]
+        count=0
+        for i in data["items"]:
+            query2="select poNumber,number from oc where number in (select ocNumber from ocitems where id=%s)"
+            cursor.execute(query2,(i,))
+            result2=cursor.fetchone()
+            query3="select partNo,nomenclature,qunatity,price,discountPercent,frieghtPercent,ocNumber,remQty from ocitems where id=%s"
+            cursor.execute(query3,(i,))
+            result3=cursor.fetchone()
+            remainingQty=int(result3[7])-int(qty[count])
+            query4="insert into plitems(serialNumber, partNumber, nomenclature, qtyRem, qtyPro, qtyDel, price, discount, frieght, plNumber, reference, damage,missing,comment, status) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            cursor.execute(query4,(sn[count],result3[0],result3[1],remainingQty,qty[count],0,result3[3],result3[4],result3[5],data["pklNumber"],result2[1],0,0,"-","In Process"))
+            query5="update ocitems set status=%s where id=%s"
+            cursor.execute(query5,('In Queue',i))
+            db.commit()
+            query6="update ocitems set remQty=%s where id=%s"
+            cursor.execute(query6,(remainingQty,i))
+            db.commit()
+            poNumber.append(result2[0])
+            count+=1
+        pos=list(dict.fromkeys(poNumber))
+        return jsonify({"response":"success","pklNumber":data["pklNumber"],"pos":pos,"code":code})
+
+@app.route("/api/aviation/uploadPKLDocument/<code>",methods=["GET","POST"])
+def uploadPKLDocument(code):
+    db,cursor = database()
+    file=request.files["attachDoc"]
+    fileName=file.filename
+    temp=fileName.split(".")
+    format=temp[1]
+    file.save(os.path.join("D:\docsTemp", secure_filename(str(code)+"."+format)))
+    query="update pl set fileLoc=%s where fileLoc=%s"
+    cursor.execute(query,(str(code)+"."+format,str(code)))
+    db.commit()
+    return redirect("https://google.com")
+
+@app.route("/api/getAllPKL/",methods=["GET","POST"])
+def getAllPKL():
+    db,cursor = database()
+    query="select * from pl"
+    cursor.execute(query)
+    result=cursor.fetchall()
+    pl=[]
+    if result:
+        for row in result:
+            temp={"id":row[0], "number":row[1], "date":str(row[2]), "shipmentDate":str(row[3]), "AWB":row[4], "fileLoc":row[5]}
+            query2="select * from plitems where plNumber=%s"
+            cursor.execute(query2,(row[1],))
+            result2=cursor.fetchall()
+            if result2:
+                item=[]
+                for row2 in result2:
+                    temp2={"id":row2[0], "serialNumber":row2[1], "partNumber":row2[2], "nomenclature":row2[3], "qtyRem":row2[4], "qtyPro":row2[5], "qtyDel":row2[6], "price":row2[7], "discount":row2[8], "frieght":row2[9], "plNumber":row2[10], "reference":row2[11], "status":row2[12],"damage":int(row2[13]),"missing":int(row2[14]),"comment":row2[15]}
+                    if str(row2[12])=="In Process":
+                        temp["invoiceNumber"]="-"
+                        temp["CRV"]="-"
+                    else:pass
+                    item.append(temp2)
+                temp["items"]=item
+            pl.append(temp)
+    return jsonify({"response":pl})
+
+@app.route("/api/getAllPKLNamess/",methods=["GET","POST"])
+def getAllPKLNames():
+    db,cursor = database()
+    query="select number from pl"
+    cursor.execute(query)
+    result=cursor.fetchall()
+    response=[]
+    if result:
+        for row in result:
+            response.append(row[0])
+    return jsonify({"response":response})
+
+@app.route("/api/getPKLItems/<search>",methods=["GET","POST"])
+def getPKLItems(search):
+    db,cursor = database()
+    query="select id, serialNumber, partNumber, nomenclature, qtyRem, qtyPro, qtyDel, price, discount, frieght, plNumber, reference, status, damage, missing, comment from plitems where plNumber=%s"
+    cursor.execute(query,(search,))
+    result=cursor.fetchall()
+    response=[]
+    if result:
+        for row in result:
+            temp={"id":row[0], "serialNumber":row[1], "partNumber":row[2], "nomenclature":row[3], "qtyRem":row[4], "qtyPro":row[5], "qtyDel":row[6], "price":row[7], "discount":row[8], "frieght":row[9], "plNumber":row[10], "reference":row[11], "status":row[12], "damage":row[13], "missing":row[14], "comment":row[15]}
+            query2="select price,discountPercent,frieghtPercent from ocitems where partNo=%s and ocNumber=%s"
+            cursor.execute(query2,(temp["partNumber"],temp["reference"]))
+            result2=cursor.fetchone()
+            temp["price"]=result2[0]
+            temp["discountPercent"]=result2[1]
+            temp["frieghtPercent"]=result2[2]
+            response.append(temp)
+    return jsonify({"response":response})
 
 if __name__=="__main__":
     app.run(port=7700,debug=True)

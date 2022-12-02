@@ -1023,7 +1023,7 @@ function searchRfqOfferPartNo(){
     $rfqs=$("#rfqs");
     $offers=$("#offers");
     $.each(itemSet, function(i, item){
-        if(String(item.partNo).search(search)!=-1){
+        if(String(item.partNo).search(search)!=-1 || String(item.rfq).search(search)!=-1 || String(item.sgRFQ).search(search)!=-1){
             // // console.log(String(item.partNo).search(search))
             if(String(item.category)=='RFQ'){
                 temp='item'+item.id+'rfq'+item.rfq;
@@ -1554,6 +1554,7 @@ function showPODetails(param){
             document.getElementById("poDetailsItemAmount").innerHTML=data["po"]["totalAmount"];
             document.getElementById("poDetailsCustomer").innerHTML=data["po"]["customer"];
             document.getElementById("ocDetailsItemAmount").innerHTML=data["oc"]["totalAmount"];
+            document.getElementById("ocDetailsNumber").innerHTML=data["oc"]["ocNumber"];
             document.getElementById("ocDoc").href=data["oc"]["fileLoc"];
             if(data["po"]["status"]=="amended"){
                 document.getElementById("detailBody").style.background="rgb(175 176 177)";
@@ -1577,9 +1578,14 @@ function showPODetails(param){
             html="<tr><th>Part No</th><th>Nomenclature</th><th>Reference</th><th>Qty</th><th>Unit Price</th><th>OC Status</th><th>Discount Percent</th><th>Frieght Percent</th></tr> "
             $table.append(html);
             count=0
+            poAmendStatus="Not Recieved"
             $.each(data["items"], function(j, item){
                 html=poItemsDetailTableHTML(item);
                 $table.append(html);
+                if(item.status=="OC Recieved"){
+                    poAmendStatus="OC Recieved";
+                }
+                else{}
                 count+=1;
             });
             $table2=$("#ocDetailsItem");
@@ -1595,7 +1601,10 @@ function showPODetails(param){
             document.getElementById("poDetailsTotal").innerHTML=count;
             document.getElementById("ocDetailsTotal").innerHTML=count2;
             document.getElementById("amendPODiv").innerHTML="";
-            $('#amendPODiv').append('<button id="amend'+data["po"]["id"]+'" style="background:'+amendPOColor+';" onclick="amendPOForm(this)" class="amendPO">AMEND PO</button>');
+            if(poAmendStatus=="OC Recieved"){}
+            else{
+                $('#amendPODiv').append('<button id="amend'+data["po"]["id"]+'" style="background:'+amendPOColor+';" onclick="amendPOForm(this)" class="amendPO">AMEND PO</button>');
+            }
             $('#amendPODiv').append('<button id="oc'+data["po"]["id"]+'" style="background:black;" onclick="createOC(this)" class="amendPO">Confirm Order</button>');
             // console.log(data);
         }
@@ -2160,6 +2169,19 @@ function loadOCEdit(){
             document.getElementById("qty").value=data["response"]["qunatity"];
             document.getElementById("ocDiscount").value=data["response"]["discountPercent"];
             document.getElementById("ocFrieghtCharges").value=data["response"]["frieghtPercent"];
+            if(data["response"]["alternate"]=="-"){
+                localStorage.setItem("OCInlieusStatus","false");
+            }
+            else{
+                localStorage.setItem("OCInlieusStatus","true");
+                document.getElementById("pn").innerHTML=data["response"]["alternate"];
+                document.getElementById("qtyLieu").value=data["response"]["qunatity"];
+                // document.getElementById("nomanclature").innerHTML=nomenclature;
+                // document.getElementById("nsn").value=nsn;
+                document.getElementById("inlieuItemButton").innerHTML="Edit Inlieu Item";
+                document.getElementById("inlieuItemButton").style.background="rgb(88 124 47)";
+            }
+
             getEditOCFormBom();
             return false;
         }
@@ -2262,7 +2284,6 @@ function editOCSubmit(){
         var fd = new FormData();
         var files = $('#attachDoc')[0].files;
         if(files.length > 0 ){
-            console.log(data);
         request=url+"/api/aviation/editOrderConfirmation/"
         $.ajax({
             headers: {
@@ -2282,7 +2303,6 @@ function editOCSubmit(){
                 document.getElementById("formBody").style.filter="blur(5px)";
                 document.getElementById("ignismyModal").style.display="block";
                 document.getElementById("ignismyModal").style.opacity="1";
-                alert(data["code"])
                 document.getElementById("ocEditDocForm").action=url+"/api/aviation/uploadOCEditDocument/"+data["code"];
                 return false;
             }
@@ -2312,6 +2332,7 @@ function loadShipment(){
         // document.getElementsByClassName("menubar").style.width="100%";
         document.getElementById("customer").style.display="none";
     }else{}
+    loadPKL()
 }
 function enableItemShipmentDetailModel(){
     document.getElementById("itemShipmentDetailModel").style.display="block";
@@ -2331,4 +2352,415 @@ function disableShipmentModals(){
         document.getElementById(item).style.display="none";
         document.getElementById(item).style.opacity="0";
     });
+}
+allPKLItems=[]
+function loadCreatePKLForm(){
+    allPKLItems=[]
+}
+function POOCItemHtml(item,count,total){
+    html='<tr>'+
+    '<td><input type="checkbox" id="item'+item.id+'" onclick="addItemtoPKL(this)"></td>'+
+    '<td>'+count+'</td>'+
+    ' <td>'+item.poNumber+'</td>'+
+    ' <td>'+item.date+'</td>'+
+    ' <td>'+item.validity+'</td>'+
+    ' <td>'+item.partNo+'</td>'+
+    ' <td>'+item.nomenclature+'</td>'+
+    ' <td>'+item.alternate+'</td>'+
+    '<td style="padding:0px;"><input type="text" id="sn'+item.id+'" style="background:lightgray;border:none;" placeholder="Enter SN" ></td>'+
+   ' <td>'+item.price+'</td>'+
+   ' <td id="rem'+item.id+'">'+item.qunatity+'</td>'+
+   '<td><input type="number" id="qty'+item.id+'"></td>'+
+//    ' <td>'+item.discountPercent+'</td>'+
+//    ' <td>'+item.frieghtPercent+'</td>'+
+//    '<td>'+total+'</td>'+
+  '</tr>'
+    return html
+}
+searchPOOCCount=1
+searchPOOCPOs=[]
+function searchPOOC(){
+    search=document.getElementById("searchpooc").value;
+    const index = searchPOOCPOs.indexOf(search);
+    console.log(searchPOOCPOs);
+    if(index > -1){alert("PO items already added!");}
+    else{
+        if(search){
+        request=url+"/api/aviation/getPOAllOCItems/"+search
+        $.ajax({
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            type: 'GET',
+            url: request,
+            success: function(data){
+                console.log(data);
+                if(data["response"]=="not found"){
+                    document.getElementById("searchpooc").style.borderColor="red";
+                    alert("PO not found. Please enter correct PO number to add items!");
+                }
+                else{
+                    searchPOOCPOs.push(search);
+                    document.getElementById("searchpooc").style.borderColor="lightgrey";
+                    $row=$("#plItems");
+                    $.each(data["response"],function(i,item){
+                        totalUnitPrice=parseFloat(item.price)*parseInt(item.qunatity)
+                        console.log("UP",totalUnitPrice);
+                        discountedPrice=(parseFloat(item.discountPercent)/100)*totalUnitPrice
+                        console.log("DP",discountedPrice);
+                        totalDiscountedPrice=totalUnitPrice-discountedPrice
+                        console.log("TDP",totalDiscountedPrice);
+                        totalPrice=totalDiscountedPrice+((parseFloat(item.frieghtPercent)/100)*totalDiscountedPrice)
+                        console.log(totalPrice);
+                        html=POOCItemHtml(item,searchPOOCCount,totalPrice.toFixed(2))
+                        $row.append(html);
+                        searchPOOCCount+=1;
+                        allPKLItems.push(item.id)
+                    });
+                }
+                
+            }
+        });
+        }
+        else{
+            document.getElementById("searchpooc").style.borderColor="red";
+        }
+    }
+}
+selectedPKLItems=[]
+pklFormItemSelectStatus=false
+function selectALLPKLItems(){
+    $.each(allPKLItems,function(i,item){
+        if(pklFormItemSelectStatus){
+            document.getElementById("item"+item).checked=false;
+            document.getElementById("pklFormItemSelectStatus").innerHTML="Select All";
+        }
+        else{
+            document.getElementById("item"+item).checked=true;
+            document.getElementById("pklFormItemSelectStatus").innerHTML="Unselect All";
+        }
+    });
+    if(pklFormItemSelectStatus){
+        selectedPKLItems=[];
+        pklFormItemSelectStatus=false;
+    }
+    else{
+        selectedPKLItems=allPKLItems;
+        pklFormItemSelectStatus=true;
+    }
+    console.log(selectedPKLItems);
+}
+function addItemtoPKL(param){
+    id=param.id;
+    id=id.replace("item","");
+    const index = selectedPKLItems.indexOf(parseInt(id));
+    if(index > -1){selectedPKLItems.splice(index, 1);}
+    else{selectedPKLItems.push(parseInt(id));}
+    console.log(selectedPKLItems);
+}
+function addPKL(){
+    console.log(selectedPKLItems.length)
+    data={}
+    if(selectedPKLItems.length===0){
+        alert("PLease add item to create PKL!");
+        return false;
+    }
+    else{
+        ids=["pklNumber","date","shipmentDate"]
+        tempStatus=true;
+        $.each(ids,function(i,item){
+            if(document.getElementById(item).value){
+                document.getElementById(item).style.borderColor="lightgrey";
+                data[item]=document.getElementById(item).value;
+            }
+            else{
+                document.getElementById(item).style.borderColor="red";
+                tempStatus=false;
+            }
+        });
+        sn=[]
+        qty=[]
+        $.each(selectedPKLItems,function(i,item){
+            if(document.getElementById("sn"+item).value){
+                document.getElementById("sn"+item).style.borderColor="lightgrey";
+                sn.push(document.getElementById("sn"+item).value);
+            }
+            else{
+                document.getElementById("sn"+item).style.border="1px solid";
+                document.getElementById("sn"+item).style.borderColor="red";
+                tempStatus=false;
+            }
+            if(document.getElementById("qty"+item).value){
+                if(parseInt(document.getElementById("qty"+item).value) > 0 && parseInt(document.getElementById("qty"+item).value) <= parseInt(document.getElementById("rem"+item).innerHTML)){
+                    document.getElementById("qty"+item).style.borderColor="lightgrey";
+                    qty.push(document.getElementById("qty"+item).value);
+                    console.log(document.getElementById("qty"+item).value," Approve");
+                }
+                else{
+                    document.getElementById("qty"+item).style.border="1px solid";
+                    document.getElementById("qty"+item).style.borderColor="red";
+                    document.getElementById("rem"+item).style.background="#ffeb3b73";
+                    tempStatus=false;
+                    console.log(document.getElementById("qty"+item).value," ",document.getElementById("rem"+item).innerHTML,"Not Approve");
+
+                }
+            }
+            else{
+                document.getElementById("qty"+item).style.border="1px solid";
+                document.getElementById("qty"+item).style.borderColor="red";
+                tempStatus=false;
+            }
+        });
+        if(tempStatus){
+            data["items"]=selectedPKLItems;
+            data["sn"]=sn;
+            data["qty"]=qty;
+            postData=JSON.stringify(data)
+            var fd = new FormData();
+            var files = $('#attachDoc')[0].files;
+            if(files.length > 0 ){
+                request=url+"/api/aviation/addPKL/"
+                $.ajax({
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    type: 'POST',
+                    url: request,
+                    // url : 'http://127.0.0.1:8081/api/allusers/'+'20',
+                    data:postData,
+                    success: function(data){
+                        if(data["response"]=="exist"){
+                            document.getElementById("ocNumber").style.borderColor="red";
+                            alert("PKL Number Already Exist!")
+                        }
+                        else{
+                            document.getElementById("pklNumber").style.borderColor="lightgrey";
+                            document.getElementById("successti").innerHTML=data["code"];
+                            document.getElementById("pklNumberDisplay").innerHTML=data["pklNumber"];
+                            document.getElementById("pos").innerHTML=data["pos"];
+                            document.getElementById("formBody").style.filter="blur(5px)";
+                            document.getElementById("ignismyModal").style.display="block";
+                            document.getElementById("ignismyModal").style.opacity="1";
+                            document.getElementById("pklDocForm").action=url+"/api/aviation/uploadPKLDocument/"+data["code"];
+                            return false;
+                        }
+                    }
+                });
+            }
+            else{
+                alert("Please Select File!");
+                return false;
+            }
+
+        }
+        else{}
+    }
+}
+function submitPKLDocument(){
+    document.getElementById("pklDocForm").submit();
+}
+function pklItemsHTML(item){
+    html=' <tr>'+
+    ' <td>'+item.reference+'</td>'+  
+        ' <td>'+item.partNumber+'</td>'+
+    '  <td>'+item.nomenclature+'</td>'+
+    '  <td>'+item.serialNumber+'</td>'+
+    '  <td>'+item.qtyRem+'</td>'+
+    '  <td>'+item.qtyPro+'</td>'+
+        ' <td>'+item.damage+'</td>'+
+        ' <td>'+item.missing+'</td>'+
+        '<td>'+item.comment+'</td>'+
+    '  <td>'+item.status+'</td>'+
+    '</tr>'
+     return html
+}
+function pklHTML(items,data){
+    console.log(items);
+    itemHTML=""
+    $.each(items,function(i,item){
+        itemHTML=itemHTML+pklItemsHTML(item);
+    })
+    html='<div class="shipment">'+
+    '<div class="shipmentCardDiv">'+
+            '<div>PKL No: '+data.number+'</div>'+
+            '<div>PKL Date: '+data.date+'</div>'+
+            '<div>Shipment Date: '+data.shipmentDate+'</div>'+
+            '<div>Invoice Number: '+data.invoiceNumber+'</div>'+
+            '<div>AWB Number: '+data.AWB+'</div>'+
+            '<div>CRV Number: '+data.CRV+'</div>'+
+    '</div>'+
+   ' <div class="offersTableSection">'+
+        '<table class="offersTable">'+
+            '<tr style="background:#183A69;color:white;font-weight:700;">'+
+            '<th>PO Number</th>'+
+                '<th>Part No</th>'+
+                '<th>Nomenclature</th>'+
+                '<th>Serial No</th>'+
+                 '<th>Qty Rem</th>'+
+                '<th>Qty Dispatch</th>'+
+                ' <th>Dmg Qty</th>'+
+               ' <th>Msg Qty</th>'+
+                '<th>Comment</th>'+
+                '<th>Delivery Status</th>'+
+           ' </tr>'+
+           itemHTML+
+            '</table>'+
+            '</div>'+
+            '<div class="remarkSection">'+
+            ' <button class="requestStatus">Status</button>'+
+            '</div>'+
+        '</div>'
+        return html
+}
+function loadPKL(){
+    request=url+"/api/getAllPKL/"
+    $.ajax({
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        type: 'GET',
+        url: request,
+        // url : 'http://127.0.0.1:8081/api/allusers/'+'20',
+        success: function(data){
+            console.log(data);
+            response=data["response"];
+            $pkl=$("#pkls");
+            $.each(response,function(i,item){
+                items=item["items"];
+                html=pklHTML(items,item);
+                $pkl.append(html);
+            });
+        }
+    });
+}
+function loadInvoiceForm(){
+    request=url+"/api/getAllPKLNamess/"
+    $.ajax({
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        type: 'GET',
+        url: request,
+        // url : 'http://127.0.0.1:8081/api/allusers/'+'20',
+        success: function(data){
+            console.log(data);
+            response=data["response"];
+            console.log(response)
+            $row=$("#packingList");
+            $.each(response,function(i,item){
+                console.log(item)
+                html="<option onclick='addPKLItems(this)' value='"+item+"'></option>";
+                console.log(html)
+                $row.append(html)
+            });
+        }
+    });
+}
+function invoiceItemHTML(item,count,total){
+    html='<tr>'+
+    '<td>'+count+'</td>'+
+    ' <td>'+item.plNumber+'</td>'+
+    ' <td>'+item.serialNumber+'</td>'+
+    ' <td>'+item.partNumber+'</td>'+
+    ' <td>'+item.nomenclature+'</td>'+
+    ' <td id="qty'+item.id+'">'+item.qtyPro+'</td>'+
+    '<td style="padding:0px;"><input type="text" id="price'+item.id+'" style="background:lightgray;border:none;" oninput="invoiceTotalCalculation()" value="'+item.price+'" placeholder="Enter Price" ></td>'+
+    '<td style="padding:0px;"><input type="text" id="discount'+item.id+'" style="background:lightgray;border:none;" oninput="invoiceTotalCalculation()" value="'+item.discountPercent+'"  placeholder="Enter Discount" ></td>'+
+    '<td style="padding:0px;"><input type="text" id="frieght'+item.id+'" style="background:lightgray;border:none;" oninput="invoiceTotalCalculation()" value="'+item.frieghtPercent+'"  placeholder="Enter Frieght" ></td>'+
+   ' <td id="total'+item.id+'">'+total+'</td>'+
+  '</tr>'
+    return html
+}
+invoiceFormCount=1;
+invoiceFormItems=[];
+invoicePKLs=[]
+function addPKLItems(search){
+    const index = invoicePKLs.indexOf(search);
+    if(index > -1){
+        alert("PKL Already Exist!");
+        document.getElementById("searchPackingList").value="";
+    }
+    else{
+        console.log(search);
+        invoicePKLs.push(search);
+        request=url+"/api/getPKLItems/"+search;
+        $.ajax({
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            type: 'GET',
+            url: request,
+            success: function(data){
+                $row=$("#invoicetems");
+                total=0;
+                $.each(data["response"],function(i,item){
+                    temp=parseInt(item.qtyPro)*parseFloat(item.price)
+                    temp2=parseFloat(item.discount)*temp
+                    temp3=temp-temp2
+                    total=temp3+(parseFloat(item.frieghtPercent)*temp);
+                    html=invoiceItemHTML(item,invoiceFormCount,total);
+                    $row.append(html);
+                    invoiceFormItems.push(item.id);
+                    invoiceFormCount+=1;
+                });
+                document.getElementById("searchPackingList").value="";
+            }
+        });
+    }
+}
+function invoiceTotalCalculation(){
+    $.each(invoiceFormItems,function(i,item){
+        console.log(item)
+        price=parseFloat(document.getElementById("price"+item).value);
+        quantity=parseFloat(document.getElementById("qty"+item).innerHTML);
+        frieght=parseFloat(document.getElementById("frieght"+item).value);
+        discount=parseFloat(document.getElementById("discount"+item).value);
+        temp=quantity*price
+        console.log(temp)
+        temp2=parseFloat(discount/100)*temp
+        temp3=temp-temp2
+        total=temp3+(parseFloat(frieght/100)*temp);
+        document.getElementById("total"+item).innerHTML=total;
+    });
+}
+function addInvoice(){
+    if(invoiceFormItems.length===0){
+    ids=["invoiceNumber","pjtNumber","invoiceDate"]
+    tempStatus=true
+    $.each(ids,function(i,item){
+        if(document.getElementById(item).value && document.getElementById(item).value > 0){
+            document.getElementById(item).style.display="lightgrey"
+        }
+        else{
+            document.getElementById(item).style.border="1px solid";
+            document.getElementById(item).style.display="red";
+            tempStatus=false;
+        }
+    });
+    if(tempStatus==true){
+        alert("success");
+        // postData=JSON.stringify(data);
+        // request=url+"/api/getPKLItems/"+search;
+        // $.ajax({
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     type: 'GET',
+        //     url: request,
+        //     data:postData,
+        //     success: function(data){
+        //         $row=$("#invoicetems");
+        //         total=0;
+        //         $.each(data["response"],function(i,item){
+        //             html=invoiceItemHTML(item,invoiceFormCount,total);
+        //             $row.append(html);
+        //             invoiceFormItems.push(item.id);
+        //             invoiceFormCount+=1;
+        //         });
+        //     }
+        // });
+    }
+    else{}
+    }
+    else{alert("Please Add Invoice Item");}
 }
